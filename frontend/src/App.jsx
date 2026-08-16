@@ -7,13 +7,13 @@ function App() {
     loadModels();
   }, []);
 
-  const handleFaceDetected = (croppedFaceDataUrl, detection) => {
-    console.log('Face detected, cropped image ready:', croppedFaceDataUrl.slice(0, 50) + '...');
+  const handleEmbeddingGenerated = (embedding) => {
+    console.log('Final embedding stored/ready, length:', embedding.length);
   };
 
   return (
     <div>
-      <UploadAadhaar onFaceDetected={handleFaceDetected} />
+      <UploadAadhaar onEmbeddingGenerated={handleEmbeddingGenerated} />
     </div>
   );
 }

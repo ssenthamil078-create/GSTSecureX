@@ -1,7 +1,7 @@
 ﻿import { useState, useRef } from 'react';
 import * as faceapi from 'face-api.js';
 
-function UploadAadhaar({ onFaceDetected }) {
+function UploadAadhaar({ onEmbeddingGenerated }) {
   const [preview, setPreview] = useState(null);
   const [status, setStatus] = useState('');
   const [croppedFace, setCroppedFace] = useState(null);
@@ -25,14 +25,15 @@ function UploadAadhaar({ onFaceDetected }) {
     try {
       const detection = await faceapi
         .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks();
+        .withFaceLandmarks()
+        .withFaceDescriptor();
 
       if (!detection) {
         setStatus('No face detected. Try a clearer photo.');
         return;
       }
 
-      setStatus('Face detected!');
+      setStatus('Face detected! Generating embedding...');
 
       const box = detection.detection.box;
       const canvas = canvasRef.current;
@@ -48,12 +49,42 @@ function UploadAadhaar({ onFaceDetected }) {
       const croppedDataUrl = canvas.toDataURL('image/jpeg');
       setCroppedFace(croppedDataUrl);
 
-      if (onFaceDetected) {
-        onFaceDetected(croppedDataUrl, detection);
+      const embedding = Array.from(detection.descriptor);
+      setStatus('Embedding generated. Storing...');
+
+      // Send embedding to backend, discard raw image after
+      const stored = await storeEmbedding(embedding);
+
+      if (stored) {
+        setStatus('Embedding stored. Raw image discarded (privacy).');
+      } else {
+        setStatus('Embedding ready locally (backend not connected yet).');
+      }
+
+      // PRIVACY STEP: discard raw uploaded image from memory/UI
+      URL.revokeObjectURL(preview);
+      setPreview(null);
+
+      if (onEmbeddingGenerated) {
+        onEmbeddingGenerated(embedding);
       }
     } catch (err) {
       console.error('Detection error:', err);
-      setStatus('Error during detection: ' + err.message);
+      setStatus('Error: ' + err.message);
+    }
+  };
+
+  const storeEmbedding = async (embedding) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/store-embedding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embedding }),
+      });
+      return response.ok;
+    } catch (err) {
+      console.warn('Backend not reachable yet, skipping store:', err.message);
+      return false;
     }
   };
 
@@ -81,7 +112,7 @@ function UploadAadhaar({ onFaceDetected }) {
 
       {croppedFace && (
         <div style={{ marginTop: '1rem' }}>
-          <p>Cropped face:</p>
+          <p>Cropped face (kept only briefly for confirmation):</p>
           <img
             src={croppedFace}
             alt="Cropped face"
