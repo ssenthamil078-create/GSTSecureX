@@ -5,9 +5,10 @@ import FaceScan from './components/FaceScan';
 import VerificationOutcome from './components/VerificationOutcome';
 import Dashboard from './components/Dashboard';
 import Chatbot from './components/Chatbot';
+import CaseTracking from './components/CaseTracking';
 
 function App() {
-  const [view, setView] = useState('flow'); // flow | dashboard | chatbot
+  const [view, setView] = useState('flow'); // flow | dashboard | chatbot | tracking
   const [stage, setStage] = useState('upload');
   const [referenceEmbedding, setReferenceEmbedding] = useState(null);
   const [result, setResult] = useState(null);
@@ -48,7 +49,8 @@ function App() {
         justifyContent: 'center',
         gap: '1rem',
         padding: '1rem',
-        borderBottom: '1px solid #ddd'
+        borderBottom: '1px solid #ddd',
+        flexWrap: 'wrap'
       }}>
         <button onClick={() => setView('flow')} style={{ fontWeight: view === 'flow' ? 'bold' : 'normal' }}>
           Registration Flow
@@ -58,6 +60,9 @@ function App() {
         </button>
         <button onClick={() => setView('chatbot')} style={{ fontWeight: view === 'chatbot' ? 'bold' : 'normal' }}>
           Assistant
+        </button>
+        <button onClick={() => setView('tracking')} style={{ fontWeight: view === 'tracking' ? 'bold' : 'normal' }}>
+          Track Case
         </button>
       </nav>
 
@@ -89,6 +94,10 @@ function App() {
 
       {view === 'chatbot' && (
         <Chatbot caseContext={chatContext} />
+      )}
+
+      {view === 'tracking' && (
+        <CaseTracking localResult={result} />
       )}
     </div>
   );
