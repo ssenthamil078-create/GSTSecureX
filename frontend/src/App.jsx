@@ -1,22 +1,19 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect } from 'react';
 import { loadModels } from './testModels';
 import UploadAadhaar from './components/UploadAadhaar';
 
 function App() {
-  const [uploadedFile, setUploadedFile] = useState(null);
-
   useEffect(() => {
     loadModels();
   }, []);
 
-  const handleImageSelected = (file, previewUrl) => {
-    console.log('File selected:', file.name);
-    setUploadedFile({ file, previewUrl });
+  const handleFaceDetected = (croppedFaceDataUrl, detection) => {
+    console.log('Face detected, cropped image ready:', croppedFaceDataUrl.slice(0, 50) + '...');
   };
 
   return (
     <div>
-      <UploadAadhaar onImageSelected={handleImageSelected} />
+      <UploadAadhaar onFaceDetected={handleFaceDetected} />
     </div>
   );
 }
