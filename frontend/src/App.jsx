@@ -4,12 +4,14 @@ import UploadAadhaar from './components/UploadAadhaar';
 import FaceScan from './components/FaceScan';
 import VerificationOutcome from './components/VerificationOutcome';
 import Dashboard from './components/Dashboard';
+import Chatbot from './components/Chatbot';
 
 function App() {
-  const [view, setView] = useState('flow'); // flow | dashboard
-  const [stage, setStage] = useState('upload'); // upload -> scan -> outcome
+  const [view, setView] = useState('flow'); // flow | dashboard | chatbot
+  const [stage, setStage] = useState('upload');
   const [referenceEmbedding, setReferenceEmbedding] = useState(null);
   const [result, setResult] = useState(null);
+  const [chatContext, setChatContext] = useState(null);
 
   useEffect(() => {
     loadModels();
@@ -23,6 +25,7 @@ function App() {
   const handleVerificationResult = (verified, similarity) => {
     setResult({ verified, similarity });
     setStage('outcome');
+    setChatContext({ verified, similarity, justUpdated: true });
   };
 
   const handleNoCameraFallback = () => {
@@ -53,6 +56,9 @@ function App() {
         <button onClick={() => setView('dashboard')} style={{ fontWeight: view === 'dashboard' ? 'bold' : 'normal' }}>
           Dashboard
         </button>
+        <button onClick={() => setView('chatbot')} style={{ fontWeight: view === 'chatbot' ? 'bold' : 'normal' }}>
+          Assistant
+        </button>
       </nav>
 
       {view === 'flow' && (
@@ -79,6 +85,10 @@ function App() {
 
       {view === 'dashboard' && (
         <Dashboard registrationStatus={registrationStatusText} verificationHistory={[]} />
+      )}
+
+      {view === 'chatbot' && (
+        <Chatbot caseContext={chatContext} />
       )}
     </div>
   );
