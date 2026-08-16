@@ -4,7 +4,8 @@ import UploadAadhaar from './components/UploadAadhaar';
 import FaceScan from './components/FaceScan';
 
 function App() {
-  const [stage, setStage] = useState('upload'); // upload -> scan
+  const [stage, setStage] = useState('upload');
+  const [referenceEmbedding, setReferenceEmbedding] = useState(null);
 
   useEffect(() => {
     loadModels();
@@ -12,12 +13,13 @@ function App() {
 
   const handleEmbeddingGenerated = (embedding) => {
     console.log('Reference embedding ready, length:', embedding.length);
-    setStage('scan'); // move to live verification stage
+    setReferenceEmbedding(embedding);
+    setStage('scan');
   };
 
-  const handleCapture = (capturedDataUrl, videoEl) => {
-    console.log('Live frame captured:', capturedDataUrl.slice(0, 50) + '...');
-    // Hour 12-14 (liveness check) and Hour 16-18 (live embedding) build on this
+  const handleVerificationResult = (verified, similarity, liveEmbedding) => {
+    console.log('Verification result:', verified, 'similarity:', similarity);
+    // Hour 18-20: wire this into Verified?/Freeze decision branch
   };
 
   const handleNoCameraFallback = () => {
@@ -30,7 +32,11 @@ function App() {
         <UploadAadhaar onEmbeddingGenerated={handleEmbeddingGenerated} />
       )}
       {stage === 'scan' && (
-        <FaceScan onCapture={handleCapture} onNoCameraFallback={handleNoCameraFallback} />
+        <FaceScan
+          referenceEmbedding={referenceEmbedding}
+          onVerificationResult={handleVerificationResult}
+          onNoCameraFallback={handleNoCameraFallback}
+        />
       )}
     </div>
   );

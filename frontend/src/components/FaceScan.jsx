@@ -1,11 +1,14 @@
 ﻿import { useState, useRef, useEffect } from 'react';
+import * as faceapi from 'face-api.js';
 import { detectBlink } from '../livenessCheck';
+import { cosineSimilarity, isVerified, SIMILARITY_THRESHOLD } from '../compareEmbeddings';
 
-function FaceScan({ onCapture, onNoCameraFallback }) {
+function FaceScan({ referenceEmbedding, onVerificationResult, onNoCameraFallback }) {
   const [hasCamera, setHasCamera] = useState(null);
   const [stream, setStream] = useState(null);
   const [error, setError] = useState('');
-  const [livenessStatus, setLivenessStatus] = useState('idle'); // idle -> checking -> passed -> failed
+  const [livenessStatus, setLivenessStatus] = useState('idle');
+  const [verifyStatus, setVerifyStatus] = useState('');
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -48,28 +51,49 @@ function FaceScan({ onCapture, onNoCameraFallback }) {
     if (!video) return;
 
     const blinkFound = await detectBlink(video, 5000);
-
-    if (blinkFound) {
-      setLivenessStatus('passed');
-    } else {
-      setLivenessStatus('failed');
-    }
+    setLivenessStatus(blinkFound ? 'passed' : 'failed');
   };
 
-  const captureFrame = () => {
+  const captureAndVerify = async () => {
     const video = videoRef.current;
     if (!video) return;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    setVerifyStatus('Generating live embedding...');
 
-    const capturedDataUrl = canvas.toDataURL('image/jpeg');
+    try {
+      const detection = await faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
 
-    if (onCapture) {
-      onCapture(capturedDataUrl, video);
+      if (!detection) {
+        setVerifyStatus('No face detected during capture. Try again.');
+        return;
+      }
+
+      const liveEmbedding = Array.from(detection.descriptor);
+
+      if (!referenceEmbedding) {
+        setVerifyStatus('No reference embedding available to compare against.');
+        console.error('Missing referenceEmbedding prop');
+        return;
+      }
+
+      const similarity = cosineSimilarity(liveEmbedding, referenceEmbedding);
+      const verified = isVerified(similarity);
+
+      setVerifyStatus(
+        (verified ? 'VERIFIED' : 'NOT VERIFIED') +
+        ' — similarity: ' + similarity.toFixed(4) +
+        ' (threshold: ' + SIMILARITY_THRESHOLD + ')'
+      );
+
+      if (onVerificationResult) {
+        onVerificationResult(verified, similarity, liveEmbedding);
+      }
+    } catch (err) {
+      console.error('Verification error:', err);
+      setVerifyStatus('Error: ' + err.message);
     }
   };
 
@@ -112,11 +136,11 @@ function FaceScan({ onCapture, onNoCameraFallback }) {
           <p style={{ fontWeight: 'bold' }}>Checking... please blink now.</p>
         )}
 
-        {livenessStatus === 'passed' && (
+        {livenessStatus === 'passed' && !verifyStatus && (
           <>
             <p style={{ fontWeight: 'bold', color: 'green' }}>Liveness confirmed!</p>
-            <button onClick={captureFrame} style={{ padding: '0.5rem 1.5rem', fontSize: '1rem' }}>
-              Capture
+            <button onClick={captureAndVerify} style={{ padding: '0.5rem 1.5rem', fontSize: '1rem' }}>
+              Capture & Verify
             </button>
           </>
         )}
@@ -128,6 +152,10 @@ function FaceScan({ onCapture, onNoCameraFallback }) {
               Retry Liveness Check
             </button>
           </>
+        )}
+
+        {verifyStatus && (
+          <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>{verifyStatus}</p>
         )}
       </div>
     </div>
