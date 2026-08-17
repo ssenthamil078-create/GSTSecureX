@@ -2,3 +2,14 @@
 frontend/node_modules
 
 frontend/dist
+
+# Environment variables
+.env
+*.env
+
+# Node dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+frontend/dist/
