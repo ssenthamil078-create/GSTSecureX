@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
+import { ShieldCheck } from 'lucide-react';
 import { loadModels } from './testModels';
 import UploadAadhaar from './components/UploadAadhaar';
 import FaceScan from './components/FaceScan';
@@ -6,15 +7,24 @@ import VerificationOutcome from './components/VerificationOutcome';
 import Dashboard from './components/Dashboard';
 import Chatbot from './components/Chatbot';
 import CaseTracking from './components/CaseTracking';
+import Footer from './components/Footer';
+import './theme.css';
+
+const STEPS = [
+  { key: 'upload', num: 1, label: 'ENROLL', sub: 'Upload Aadhaar Photo' },
+  { key: 'scan', num: 2, label: 'VERIFY', sub: 'Identity Verification' },
+  { key: 'outcome', num: 3, label: 'OUTCOME', sub: 'Registration Outcome' },
+];
 
 function App() {
+  const [modelsReady, setModelsReady] = useState(false);
   const [view, setView] = useState('flow');
   const [stage, setStage] = useState('upload');
   const [referenceEmbedding, setReferenceEmbedding] = useState(null);
   const [result, setResult] = useState(null);
   const [chatContext, setChatContext] = useState(null);
 
-  useEffect(() => { loadModels(); }, []);
+  useEffect(() => { loadModels().then(() => setModelsReady(true)); }, []);
 
   const handleEmbeddingGenerated = (embedding) => {
     setReferenceEmbedding(embedding);
@@ -40,37 +50,82 @@ function App() {
     ? (result.verified ? 'Verified (' + result.similarity.toFixed(4) + ')' : 'Frozen (' + result.similarity.toFixed(4) + ')')
     : null;
 
+  const currentStepIdx = STEPS.findIndex((s) => s.key === stage);
+
   return (
     <div>
-      <nav style={{ display: 'flex', justifyContent: 'center', gap: '1rem', padding: '1rem', borderBottom: '1px solid #ddd', flexWrap: 'wrap' }}>
-        <button onClick={() => setView('flow')} style={{ fontWeight: view === 'flow' ? 'bold' : 'normal' }}>Registration Flow</button>
-        <button onClick={() => setView('dashboard')} style={{ fontWeight: view === 'dashboard' ? 'bold' : 'normal' }}>Dashboard</button>
-        <button onClick={() => setView('chatbot')} style={{ fontWeight: view === 'chatbot' ? 'bold' : 'normal' }}>Assistant</button>
-        <button onClick={() => setView('tracking')} style={{ fontWeight: view === 'tracking' ? 'bold' : 'normal' }}>Track Case</button>
-        <button onClick={handleFullReset} style={{ backgroundColor: '#333', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px' }}>
-          + New Registration
-        </button>
-      </nav>
+      <header className="pw-header">
+        <div className="pw-brand">
+          <div className="pw-brand-icon"><ShieldCheck size={20} color="white" /></div>
+          <div className="pw-brand-text">
+            <div className="pw-wordmark">GSTSecureX</div>
+            <div className="pw-tagline">GST Fraud Monitor</div>
+          </div>
+        </div>
+        <nav className="pw-nav">
+          <button className={view === 'flow' ? 'active' : ''} onClick={() => setView('flow')}>Registration Flow</button>
+          <button className={view === 'dashboard' ? 'active' : ''} onClick={() => setView('dashboard')}>Dashboard</button>
+          <button className={view === 'chatbot' ? 'active' : ''} onClick={() => setView('chatbot')}>Assistant</button>
+          <button className={view === 'tracking' ? 'active' : ''} onClick={() => setView('tracking')}>Track Case</button>
+          <button className="pw-new-btn" onClick={handleFullReset}>+ New Registration</button>
+        </nav>
+      </header>
 
-      {view === 'flow' && (
+      {!modelsReady && (
+        <div className="pw-loading">
+          <div className="pw-spinner" />
+          <span>LOADING_FACE_MODELS...</span>
+        </div>
+      )}
+
+      {modelsReady && (
         <>
-          {stage === 'upload' && <UploadAadhaar onEmbeddingGenerated={handleEmbeddingGenerated} />}
-          {stage === 'scan' && (
-            <FaceScan
-              referenceEmbedding={referenceEmbedding}
-              onVerificationResult={handleVerificationResult}
-              onNoCameraFallback={handleNoCameraFallback}
-            />
+          {view === 'flow' && (
+            <>
+              <div className="pw-stepper">
+                {STEPS.map((s, idx) => (
+                  <div key={s.key} style={{ display: 'flex', alignItems: 'flex-start' }}>
+                    <div className="pw-step-item">
+                      <div className={'pw-step-circle ' + (idx < currentStepIdx ? 'done' : idx === currentStepIdx ? 'current' : '')}>
+                        {s.num}
+                      </div>
+                      <div className="pw-step-label">{s.label}</div>
+                      <div className="pw-step-sublabel">{s.sub}</div>
+                    </div>
+                    {idx < STEPS.length - 1 && (
+                      <div className={'pw-step-connector ' + (idx < currentStepIdx ? 'done' : '')} />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="pw-page">
+                {stage === 'upload' && <UploadAadhaar onEmbeddingGenerated={handleEmbeddingGenerated} />}
+                {stage === 'scan' && (
+                  <FaceScan
+                    referenceEmbedding={referenceEmbedding}
+                    onVerificationResult={handleVerificationResult}
+                    onNoCameraFallback={handleNoCameraFallback}
+                  />
+                )}
+                {stage === 'outcome' && result && (
+                  <VerificationOutcome verified={result.verified} similarity={result.similarity} onRestart={handleFullReset} />
+                )}
+              </div>
+            </>
           )}
-          {stage === 'outcome' && result && (
-            <VerificationOutcome verified={result.verified} similarity={result.similarity} onRestart={handleFullReset} />
+
+          {view === 'dashboard' && (
+            <div className="pw-page pw-page-wide">
+              <Dashboard registrationStatus={registrationStatusText} onNavigate={setView} onNewRegistration={handleFullReset} />
+            </div>
           )}
+          {view === 'chatbot' && <div className="pw-page"><Chatbot caseContext={chatContext} /></div>}
+          {view === 'tracking' && <div className="pw-page"><CaseTracking localResult={result} /></div>}
         </>
       )}
 
-      {view === 'dashboard' && <Dashboard registrationStatus={registrationStatusText} verificationHistory={[]} />}
-      {view === 'chatbot' && <Chatbot caseContext={chatContext} />}
-      {view === 'tracking' && <CaseTracking localResult={result} />}
+      <Footer />
     </div>
   );
 }

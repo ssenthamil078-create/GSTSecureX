@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react';
+import { ArrowRight } from 'lucide-react';
 
 const STATUS_STEPS = [
   { key: 'registered', label: 'Registration Submitted' },
@@ -35,8 +36,7 @@ function CaseTracking({ localResult }) {
     try {
       const response = await fetch('http://localhost:5000/api/case-status/' + id);
       if (!response.ok) throw new Error('Case not found');
-      const data = await response.json();
-      setCaseData(data);
+      setCaseData(await response.json());
     } catch (err) {
       setError('Could not fetch live case data (backend not connected, or invalid case ID).');
     } finally {
@@ -51,6 +51,8 @@ function CaseTracking({ localResult }) {
     pollRef.current = setInterval(() => fetchCaseStatus(caseId.trim()), 5000);
   };
 
+  const handleKeyPress = (e) => { if (e.key === 'Enter') handleTrack(); };
+
   const currentStepIndex = caseData ? STATUS_STEPS.findIndex((s) => s.key === caseData.status) : -1;
 
   const plainSummary = caseData
@@ -62,33 +64,41 @@ function CaseTracking({ localResult }) {
     : null;
 
   return (
-    <div style={{ maxWidth: '500px', margin: '2rem auto', padding: '1.5rem' }}>
-      <h2 style={{ textAlign: 'center' }}>Track Your Case</h2>
+    <div>
+      <div className="pw-page-title">Track Your Case</div>
+      <div className="pw-page-subtitle">Enter your case ID to see real-time status of your registration</div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+      <div className="pw-track-search">
         <input
-          type="text" value={caseId} onChange={(e) => setCaseId(e.target.value)}
+          type="text"
+          className="pw-track-input"
+          value={caseId}
+          onChange={(e) => setCaseId(e.target.value)}
+          onKeyPress={handleKeyPress}
           placeholder="Enter Case ID (e.g. CASE-12345)"
-          style={{ flex: 1, padding: '0.6rem', border: '1px solid #ccc', borderRadius: '6px' }}
         />
-        <button onClick={handleTrack} style={{ padding: '0.6rem 1.2rem' }}>Track</button>
+        <button className="pw-btn pw-btn-primary" onClick={handleTrack}>
+          Track <ArrowRight size={16} />
+        </button>
       </div>
 
-      {loading && <p style={{ textAlign: 'center' }}>Fetching latest status...</p>}
-      {error && <p style={{ textAlign: 'center', color: '#a67c00' }}>{error}</p>}
+      {loading && <p style={{ color: 'var(--ink-soft)', fontSize: '0.85rem' }}>Fetching latest status...</p>}
+      {error && <p style={{ color: 'var(--amber)', fontSize: '0.85rem' }}>{error}</p>}
 
       {caseData && (
-        <div style={{ padding: '1rem', border: '1px solid #ddd', borderRadius: '10px' }}>
+        <div className="pw-card">
           <p style={{
-            fontWeight: 'bold', fontSize: '1.1rem',
-            color: caseData.status === 'frozen' ? '#b00020' : '#0a7d34'
+            fontWeight: 700, fontSize: '1rem', margin: '0 0 0.75rem',
+            color: caseData.status === 'frozen' ? 'var(--red)' : 'var(--green)'
           }}>
             {plainSummary}
           </p>
-          <p><strong>Case ID:</strong> {caseData.id}</p>
-          <p><strong>Last updated:</strong> {caseData.lastUpdated}</p>
+          <p style={{ fontSize: '0.85rem', margin: '0.2rem 0' }}><strong>Case ID:</strong> {caseData.id}</p>
+          <p style={{ fontSize: '0.85rem', margin: '0.2rem 0' }}><strong>Last updated:</strong> {caseData.lastUpdated}</p>
           {caseData.similarity !== undefined && (
-            <p><strong>Match distance:</strong> {caseData.similarity.toFixed(4)} (lower = closer match)</p>
+            <p style={{ fontSize: '0.85rem', margin: '0.2rem 0' }}>
+              <strong>Match distance:</strong> {caseData.similarity.toFixed(4)} (lower = closer match)
+            </p>
           )}
 
           <div style={{ marginTop: '1rem' }}>
@@ -99,16 +109,16 @@ function CaseTracking({ localResult }) {
                 <div key={step.key} style={{
                   display: 'flex', alignItems: 'center', marginBottom: '0.5rem',
                   padding: isCurrent ? '0.4rem 0.6rem' : '0',
-                  backgroundColor: isCurrent ? '#fff8e1' : 'transparent',
+                  backgroundColor: isCurrent ? 'var(--amber-soft)' : 'transparent',
                   borderRadius: '6px'
                 }}>
                   <div style={{
-                    width: '14px', height: '14px', borderRadius: '50%',
-                    backgroundColor: isPast ? (step.key === 'frozen' ? '#b00020' : '#0a7d34') : '#ccc',
-                    marginRight: '0.75rem', flexShrink: 0,
+                    width: '12px', height: '12px', borderRadius: '50%',
+                    backgroundColor: isPast ? (step.key === 'frozen' ? 'var(--red)' : 'var(--green)') : 'var(--border)',
+                    marginRight: '0.7rem', flexShrink: 0,
                   }} />
-                  <span style={{ fontWeight: isCurrent ? 'bold' : 'normal' }}>{step.label}</span>
-                  {isCurrent && <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: '#a67c00' }}>← current</span>}
+                  <span style={{ fontSize: '0.85rem', fontWeight: isCurrent ? 700 : 400 }}>{step.label}</span>
+                  {isCurrent && <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--amber)' }}>← current</span>}
                 </div>
               );
             })}
@@ -117,7 +127,7 @@ function CaseTracking({ localResult }) {
       )}
 
       {!caseData && !loading && (
-        <p style={{ textAlign: 'center', color: '#777' }}>
+        <p style={{ textAlign: 'center', color: 'var(--ink-soft)', fontSize: '0.85rem', marginTop: '1.5rem' }}>
           Enter a case ID above, or complete a registration to see your live status here.
         </p>
       )}

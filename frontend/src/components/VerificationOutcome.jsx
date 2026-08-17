@@ -1,4 +1,5 @@
 ﻿import { useState } from 'react';
+import { DISTANCE_THRESHOLD } from '../compareEmbeddings';
 
 function VerificationOutcome({ verified, similarity, onRestart }) {
   const [reportStatus, setReportStatus] = useState('');
@@ -13,45 +14,46 @@ function VerificationOutcome({ verified, similarity, onRestart }) {
       });
       setReportStatus(response.ok ? 'Backend notified successfully.' : 'Backend responded with an error.');
     } catch (err) {
-      console.warn('Backend not reachable:', err.message);
       setReportStatus('Backend not connected yet (result logged locally).');
     }
   };
 
-  if (verified) {
-    return (
-      <div style={{ textAlign: 'center', padding: '2rem' }}>
-        <div style={{
-          display: 'inline-block', padding: '1.5rem 2.5rem', borderRadius: '12px',
-          backgroundColor: '#e6f9ec', border: '2px solid green'
-        }}>
-          <h2 style={{ color: 'green', margin: 0 }}>Registration Continues</h2>
-          <p>Identity verified — match distance: {similarity.toFixed(4)}</p>
-        </div>
-        <div style={{ marginTop: '1.5rem' }}>
-          <button onClick={notifyBackend} style={{ padding: '0.5rem 1.5rem' }}>Confirm & Notify Backend</button>
-          <button onClick={onRestart} style={{ padding: '0.5rem 1.5rem', marginLeft: '1rem' }}>Start New Registration</button>
-        </div>
-        {reportStatus && <p style={{ marginTop: '1rem' }}>{reportStatus}</p>}
-      </div>
-    );
-  }
+  // Meter: 0 distance = far left (great match), threshold = midpoint marker, cap display at 1.0
+  const meterPct = Math.min((similarity / 1.0) * 100, 100);
+  const thresholdPct = (DISTANCE_THRESHOLD / 1.0) * 100;
+  const meterColor = verified ? 'var(--confirm)' : 'var(--alert)';
 
   return (
-    <div style={{ textAlign: 'center', padding: '2rem' }}>
-      <div style={{
-        display: 'inline-block', padding: '1.5rem 2.5rem', borderRadius: '12px',
-        backgroundColor: '#fdeaea', border: '2px solid #b00'
-      }}>
-        <h2 style={{ color: '#b00', margin: 0 }}>Registration Frozen</h2>
-        <p>Suspicious activity — match distance: {similarity.toFixed(4)}</p>
-        <p style={{ fontWeight: 'bold' }}>A complaint has been auto-drafted and routed to authorities for investigation.</p>
+    <div className="pw-card pw-card-center">
+      <div className={'pw-banner ' + (verified ? 'pw-banner-verified' : 'pw-banner-frozen')}>
+        <h2>{verified ? 'Registration Continues' : 'Registration Frozen'}</h2>
+        <p>{verified ? 'Identity verified against reference.' : 'Suspicious activity detected.'}</p>
+        {!verified && <p style={{ fontWeight: 600 }}>A complaint has been auto-drafted and routed to authorities.</p>}
       </div>
-      <div style={{ marginTop: '1.5rem' }}>
-        <button onClick={notifyBackend} style={{ padding: '0.5rem 1.5rem' }}>Confirm Freeze & Notify Backend</button>
-        <button onClick={onRestart} style={{ padding: '0.5rem 1.5rem', marginLeft: '1rem' }}>Start New Registration</button>
+
+      <div className="pw-console">
+        <div className="pw-console-label">MATCH_DISTANCE</div>
+        <div className="pw-console-score">{similarity.toFixed(4)}</div>
+        <div className="pw-console-meter">
+          <div
+            className="pw-console-meter-fill"
+            style={{ width: meterPct + '%', background: meterColor }}
+          />
+          <div className="pw-console-threshold" style={{ left: thresholdPct + '%' }} />
+        </div>
+        <div className="pw-console-caption">
+          threshold {DISTANCE_THRESHOLD.toFixed(2)} — lower distance = closer match
+        </div>
       </div>
-      {reportStatus && <p style={{ marginTop: '1rem' }}>{reportStatus}</p>}
+
+      <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.6rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <button className="pw-btn pw-btn-primary" onClick={notifyBackend}>
+          {verified ? 'Confirm & Notify Backend' : 'Confirm Freeze & Notify Backend'}
+        </button>
+        <button className="pw-btn pw-btn-ghost" onClick={onRestart}>Start New Registration</button>
+      </div>
+
+      {reportStatus && <p style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--ink-soft)' }}>{reportStatus}</p>}
     </div>
   );
 }

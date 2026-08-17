@@ -1,0 +1,38 @@
+﻿.pw-chat-wrap { max-width: 480px; margin: 0 auto; }
+.pw-chat-avatar {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--navy); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.pw-chat-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: flex-start; }
+.pw-chat-row.user { flex-direction: row-reverse; }
+.pw-chat-bubble {
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 1rem 1.25rem; box-shadow: var(--shadow); max-width: 78%;
+  font-size: 0.95rem; line-height: 1.5;
+}
+.pw-chat-bubble.user { background: var(--navy); color: white; border-color: var(--navy); }
+.pw-chat-time { font-size: 0.7rem; color: var(--ink-soft); margin-top: 0.4rem; display: block; }
+.pw-chat-bubble.user .pw-chat-time { color: #9FB0CC; }
+
+.pw-chat-chips { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; margin: 1rem 0 1.25rem; }
+.pw-chat-chip {
+  display: flex; align-items: center; gap: 0.6rem;
+  border-radius: 12px; padding: 0.75rem 0.9rem; font-size: 0.85rem; font-weight: 600;
+  border: 1px solid; cursor: pointer; background: none; text-align: left;
+}
+.pw-chat-chip-icon { flex-shrink: 0; }
+
+.pw-chat-inputbar {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: var(--card); border: 1px solid var(--border); border-radius: 999px;
+  padding: 0.5rem 0.5rem 0.5rem 1.1rem; box-shadow: var(--shadow);
+}
+.pw-chat-inputbar input {
+  flex: 1; border: none; outline: none; font-family: var(--font-body); font-size: 0.9rem; background: transparent;
+}
+.pw-chat-send {
+  display: flex; align-items: center; gap: 0.4rem;
+  background: var(--navy); color: white; border: none; border-radius: 999px;
+  padding: 0.6rem 1.1rem; font-weight: 600; font-size: 0.85rem; cursor: pointer; flex-shrink: 0;
+}
