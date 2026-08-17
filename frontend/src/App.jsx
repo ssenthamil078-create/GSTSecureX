@@ -8,34 +8,32 @@ import Chatbot from './components/Chatbot';
 import CaseTracking from './components/CaseTracking';
 
 function App() {
-  const [view, setView] = useState('flow'); // flow | dashboard | chatbot | tracking
+  const [view, setView] = useState('flow');
   const [stage, setStage] = useState('upload');
   const [referenceEmbedding, setReferenceEmbedding] = useState(null);
   const [result, setResult] = useState(null);
   const [chatContext, setChatContext] = useState(null);
 
-  useEffect(() => {
-    loadModels();
-  }, []);
+  useEffect(() => { loadModels(); }, []);
 
   const handleEmbeddingGenerated = (embedding) => {
     setReferenceEmbedding(embedding);
     setStage('scan');
   };
 
-  const handleVerificationResult = (verified, similarity) => {
-    setResult({ verified, similarity });
+  const handleVerificationResult = (verified, distance) => {
+    setResult({ verified, similarity: distance });
     setStage('outcome');
-    setChatContext({ verified, similarity, justUpdated: true });
+    setChatContext({ verified, similarity: distance, justUpdated: true });
   };
 
-  const handleNoCameraFallback = () => {
-    console.log('No camera - route to Voice/CSC path');
-  };
+  const handleNoCameraFallback = () => console.log('No camera - route to Voice/CSC path');
 
-  const handleRestart = () => {
-    setStage('scan');
+  const handleFullReset = () => {
+    setStage('upload');
+    setReferenceEmbedding(null);
     setResult(null);
+    setView('flow');
   };
 
   const registrationStatusText = result
@@ -44,33 +42,19 @@ function App() {
 
   return (
     <div>
-      <nav style={{
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '1rem',
-        padding: '1rem',
-        borderBottom: '1px solid #ddd',
-        flexWrap: 'wrap'
-      }}>
-        <button onClick={() => setView('flow')} style={{ fontWeight: view === 'flow' ? 'bold' : 'normal' }}>
-          Registration Flow
-        </button>
-        <button onClick={() => setView('dashboard')} style={{ fontWeight: view === 'dashboard' ? 'bold' : 'normal' }}>
-          Dashboard
-        </button>
-        <button onClick={() => setView('chatbot')} style={{ fontWeight: view === 'chatbot' ? 'bold' : 'normal' }}>
-          Assistant
-        </button>
-        <button onClick={() => setView('tracking')} style={{ fontWeight: view === 'tracking' ? 'bold' : 'normal' }}>
-          Track Case
+      <nav style={{ display: 'flex', justifyContent: 'center', gap: '1rem', padding: '1rem', borderBottom: '1px solid #ddd', flexWrap: 'wrap' }}>
+        <button onClick={() => setView('flow')} style={{ fontWeight: view === 'flow' ? 'bold' : 'normal' }}>Registration Flow</button>
+        <button onClick={() => setView('dashboard')} style={{ fontWeight: view === 'dashboard' ? 'bold' : 'normal' }}>Dashboard</button>
+        <button onClick={() => setView('chatbot')} style={{ fontWeight: view === 'chatbot' ? 'bold' : 'normal' }}>Assistant</button>
+        <button onClick={() => setView('tracking')} style={{ fontWeight: view === 'tracking' ? 'bold' : 'normal' }}>Track Case</button>
+        <button onClick={handleFullReset} style={{ backgroundColor: '#333', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px' }}>
+          + New Registration
         </button>
       </nav>
 
       {view === 'flow' && (
         <>
-          {stage === 'upload' && (
-            <UploadAadhaar onEmbeddingGenerated={handleEmbeddingGenerated} />
-          )}
+          {stage === 'upload' && <UploadAadhaar onEmbeddingGenerated={handleEmbeddingGenerated} />}
           {stage === 'scan' && (
             <FaceScan
               referenceEmbedding={referenceEmbedding}
@@ -79,26 +63,14 @@ function App() {
             />
           )}
           {stage === 'outcome' && result && (
-            <VerificationOutcome
-              verified={result.verified}
-              similarity={result.similarity}
-              onRestart={handleRestart}
-            />
+            <VerificationOutcome verified={result.verified} similarity={result.similarity} onRestart={handleFullReset} />
           )}
         </>
       )}
 
-      {view === 'dashboard' && (
-        <Dashboard registrationStatus={registrationStatusText} verificationHistory={[]} />
-      )}
-
-      {view === 'chatbot' && (
-        <Chatbot caseContext={chatContext} />
-      )}
-
-      {view === 'tracking' && (
-        <CaseTracking localResult={result} />
-      )}
+      {view === 'dashboard' && <Dashboard registrationStatus={registrationStatusText} verificationHistory={[]} />}
+      {view === 'chatbot' && <Chatbot caseContext={chatContext} />}
+      {view === 'tracking' && <CaseTracking localResult={result} />}
     </div>
   );
 }

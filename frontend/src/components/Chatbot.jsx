@@ -12,12 +12,11 @@ function Chatbot({ caseContext }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // If case context changes (e.g. user just got frozen), proactively explain why
   useEffect(() => {
     if (caseContext && caseContext.justUpdated) {
       const contextMsg = caseContext.verified
         ? 'Good news — your registration was just verified and continues normally.'
-        : 'Your registration was just frozen because the face verification did not match closely enough. Ask me \"why flagged\" if you want more detail.';
+        : 'Your registration was just frozen because the face verification did not match closely enough. Ask me \"why was I flagged\" if you want more detail.';
 
       setMessages((prev) => [...prev, { sender: 'bot', text: contextMsg }]);
     }
@@ -28,7 +27,7 @@ function Chatbot({ caseContext }) {
     if (!input.trim()) return;
 
     const userMsg = { sender: 'user', text: input };
-    const botReply = { sender: 'bot', text: getChatbotResponse(input) };
+    const botReply = { sender: 'bot', text: getChatbotResponse(input, caseContext) };
 
     setMessages((prev) => [...prev, userMsg, botReply]);
     setInput('');

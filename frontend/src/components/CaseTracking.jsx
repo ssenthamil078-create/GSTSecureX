@@ -17,7 +17,6 @@ function CaseTracking({ localResult }) {
   const pollRef = useRef(null);
 
   useEffect(() => {
-    // If we have a local verification result (from this session), show it immediately
     if (localResult) {
       setCaseData({
         id: 'LOCAL-SESSION',
@@ -28,11 +27,7 @@ function CaseTracking({ localResult }) {
     }
   }, [localResult]);
 
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
   const fetchCaseStatus = async (id) => {
     setLoading(true);
@@ -43,7 +38,6 @@ function CaseTracking({ localResult }) {
       const data = await response.json();
       setCaseData(data);
     } catch (err) {
-      console.warn('Backend not reachable or case not found:', err.message);
       setError('Could not fetch live case data (backend not connected, or invalid case ID).');
     } finally {
       setLoading(false);
@@ -53,15 +47,19 @@ function CaseTracking({ localResult }) {
   const handleTrack = () => {
     if (!caseId.trim()) return;
     fetchCaseStatus(caseId.trim());
-
-    // Poll every 5s for real-time updates once backend is live
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(() => fetchCaseStatus(caseId.trim()), 5000);
   };
 
-  const currentStepIndex = caseData
-    ? STATUS_STEPS.findIndex((s) => s.key === caseData.status)
-    : -1;
+  const currentStepIndex = caseData ? STATUS_STEPS.findIndex((s) => s.key === caseData.status) : -1;
+
+  const plainSummary = caseData
+    ? (caseData.status === 'verified'
+        ? 'Your identity was confirmed. Registration is proceeding normally.'
+        : caseData.status === 'frozen'
+        ? 'Your registration is on hold due to a face-match issue. A complaint has been filed for investigation.'
+        : 'Your case is still being processed.')
+    : null;
 
   return (
     <div style={{ maxWidth: '500px', margin: '2rem auto', padding: '1.5rem' }}>
@@ -69,15 +67,11 @@ function CaseTracking({ localResult }) {
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
         <input
-          type="text"
-          value={caseId}
-          onChange={(e) => setCaseId(e.target.value)}
+          type="text" value={caseId} onChange={(e) => setCaseId(e.target.value)}
           placeholder="Enter Case ID (e.g. CASE-12345)"
           style={{ flex: 1, padding: '0.6rem', border: '1px solid #ccc', borderRadius: '6px' }}
         />
-        <button onClick={handleTrack} style={{ padding: '0.6rem 1.2rem' }}>
-          Track
-        </button>
+        <button onClick={handleTrack} style={{ padding: '0.6rem 1.2rem' }}>Track</button>
       </div>
 
       {loading && <p style={{ textAlign: 'center' }}>Fetching latest status...</p>}
@@ -85,10 +79,16 @@ function CaseTracking({ localResult }) {
 
       {caseData && (
         <div style={{ padding: '1rem', border: '1px solid #ddd', borderRadius: '10px' }}>
+          <p style={{
+            fontWeight: 'bold', fontSize: '1.1rem',
+            color: caseData.status === 'frozen' ? '#b00020' : '#0a7d34'
+          }}>
+            {plainSummary}
+          </p>
           <p><strong>Case ID:</strong> {caseData.id}</p>
           <p><strong>Last updated:</strong> {caseData.lastUpdated}</p>
           {caseData.similarity !== undefined && (
-            <p><strong>Match similarity:</strong> {caseData.similarity.toFixed(4)}</p>
+            <p><strong>Match distance:</strong> {caseData.similarity.toFixed(4)} (lower = closer match)</p>
           )}
 
           <div style={{ marginTop: '1rem' }}>
@@ -96,16 +96,19 @@ function CaseTracking({ localResult }) {
               const isPast = idx <= currentStepIndex;
               const isCurrent = idx === currentStepIndex;
               return (
-                <div key={step.key} style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <div key={step.key} style={{
+                  display: 'flex', alignItems: 'center', marginBottom: '0.5rem',
+                  padding: isCurrent ? '0.4rem 0.6rem' : '0',
+                  backgroundColor: isCurrent ? '#fff8e1' : 'transparent',
+                  borderRadius: '6px'
+                }}>
                   <div style={{
-                    width: '14px',
-                    height: '14px',
-                    borderRadius: '50%',
+                    width: '14px', height: '14px', borderRadius: '50%',
                     backgroundColor: isPast ? (step.key === 'frozen' ? '#b00020' : '#0a7d34') : '#ccc',
-                    marginRight: '0.75rem',
-                    flexShrink: 0,
+                    marginRight: '0.75rem', flexShrink: 0,
                   }} />
                   <span style={{ fontWeight: isCurrent ? 'bold' : 'normal' }}>{step.label}</span>
+                  {isCurrent && <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: '#a67c00' }}>← current</span>}
                 </div>
               );
             })}

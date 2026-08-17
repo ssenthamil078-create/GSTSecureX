@@ -1,7 +1,7 @@
 ﻿import { useState, useRef, useEffect } from 'react';
 import * as faceapi from 'face-api.js';
 import { detectBlink } from '../livenessCheck';
-import { cosineSimilarity, isVerified, SIMILARITY_THRESHOLD } from '../compareEmbeddings';
+import { euclideanDistance, isVerified, DISTANCE_THRESHOLD } from '../compareEmbeddings';
 
 function FaceScan({ referenceEmbedding, onVerificationResult, onNoCameraFallback }) {
   const [hasCamera, setHasCamera] = useState(null);
@@ -23,20 +23,15 @@ function FaceScan({ referenceEmbedding, onVerificationResult, onNoCameraFallback
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cameras = devices.filter((d) => d.kind === 'videoinput');
-
       if (cameras.length === 0) {
         setHasCamera(false);
         if (onNoCameraFallback) onNoCameraFallback();
         return;
       }
-
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
       setStream(mediaStream);
       setHasCamera(true);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
+      if (videoRef.current) videoRef.current.srcObject = mediaStream;
     } catch (err) {
       console.warn('Camera not available:', err.message);
       setHasCamera(false);
@@ -49,15 +44,18 @@ function FaceScan({ referenceEmbedding, onVerificationResult, onNoCameraFallback
     setLivenessStatus('checking');
     const video = videoRef.current;
     if (!video) return;
-
-    const blinkFound = await detectBlink(video, 5000);
+    const blinkFound = await detectBlink(video, 7000);
     setLivenessStatus(blinkFound ? 'passed' : 'failed');
+  };
+
+  const skipLiveness = () => {
+    console.log('Liveness skipped (demo mode)');
+    setLivenessStatus('passed');
   };
 
   const captureAndVerify = async () => {
     const video = videoRef.current;
     if (!video) return;
-
     setVerifyStatus('Generating live embedding...');
 
     try {
@@ -75,21 +73,20 @@ function FaceScan({ referenceEmbedding, onVerificationResult, onNoCameraFallback
 
       if (!referenceEmbedding) {
         setVerifyStatus('No reference embedding available to compare against.');
-        console.error('Missing referenceEmbedding prop');
         return;
       }
 
-      const similarity = cosineSimilarity(liveEmbedding, referenceEmbedding);
-      const verified = isVerified(similarity);
+      const distance = euclideanDistance(liveEmbedding, referenceEmbedding);
+      const verified = isVerified(distance);
 
       setVerifyStatus(
         (verified ? 'VERIFIED' : 'NOT VERIFIED') +
-        ' — similarity: ' + similarity.toFixed(4) +
-        ' (threshold: ' + SIMILARITY_THRESHOLD + ')'
+        ' — match distance: ' + distance.toFixed(4) +
+        ' (threshold: ' + DISTANCE_THRESHOLD + ', lower = closer match)'
       );
 
       if (onVerificationResult) {
-        onVerificationResult(verified, similarity, liveEmbedding);
+        onVerificationResult(verified, distance, liveEmbedding);
       }
     } catch (err) {
       console.error('Verification error:', err);
@@ -133,7 +130,7 @@ function FaceScan({ referenceEmbedding, onVerificationResult, onNoCameraFallback
         )}
 
         {livenessStatus === 'checking' && (
-          <p style={{ fontWeight: 'bold' }}>Checking... please blink now.</p>
+          <p style={{ fontWeight: 'bold' }}>Checking... please blink now (up to 7 sec).</p>
         )}
 
         {livenessStatus === 'passed' && !verifyStatus && (
@@ -147,9 +144,12 @@ function FaceScan({ referenceEmbedding, onVerificationResult, onNoCameraFallback
 
         {livenessStatus === 'failed' && (
           <>
-            <p style={{ fontWeight: 'bold', color: '#b00' }}>No blink detected. Try again.</p>
-            <button onClick={runLivenessCheck} style={{ padding: '0.5rem 1.5rem', fontSize: '1rem' }}>
+            <p style={{ fontWeight: 'bold', color: '#b00' }}>No blink detected. Try again in good lighting, facing the camera directly.</p>
+            <button onClick={runLivenessCheck} style={{ padding: '0.5rem 1.5rem', marginRight: '0.5rem' }}>
               Retry Liveness Check
+            </button>
+            <button onClick={skipLiveness} style={{ padding: '0.5rem 1.5rem', backgroundColor: '#eee' }}>
+              Skip Liveness (Demo Mode)
             </button>
           </>
         )}
